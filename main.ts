@@ -1,86 +1,45 @@
-import {mkdirSync,readFileSync,readdirSync,writeFileSync} from 'node:fs';
-import {join} from 'node:path';
-const I=process.env.MAKEFUN_INPUT_DIR??'/input';
-const O=process.env.MAKEFUN_OUTPUT_DIR??'/output';
-// Run one program: p is program.bin, q is input.bin. Returns [output bytes, exit code].
+import{mkdirSync as M,readFileSync as R,readdirSync as D,writeFileSync as W}from'node:fs';
+import{join as J}from'node:path';
+const E=process.env,I=E.MAKEFUN_INPUT_DIR??'/input',O=E.MAKEFUN_OUTPUT_DIR??'/output',A=Int32Array;
+const T='01146:;?0000000099999995999599909990000000000000044000000000000058000000000000004414';
+const F=[(a,b)=>a+b|0,(a,b)=>a-b|0,Math.imul,(a,b)=>b?(a/b)|0:NaN,(a,b)=>b?a%b:NaN,(a,b)=>b?(a>>>0)/(b>>>0)|0:NaN,(a,b)=>b?(a>>>0)%(b>>>0)|0:NaN,0,(a,b)=>a&b,(a,b)=>a|b,(a,b)=>a^b,0,(a,b)=>a<<(b&31),(a,b)=>a>>(b&31),(a,b)=>a>>>(b&31)|0,0,(a,b)=>a==b,(a,b)=>a<b,(a,b)=>(a>>>0)<(b>>>0)];
 function run(p,q){
- const s=new Int32Array(256),c=new Int32Array(64),m=new Int32Array(256),o=[];
- let sp=0,cp=0,pc=0,n=0,ip=0;
- for(;;){
-  if(n>=1000000)return[o,10];
-  if(pc<0||pc>=p.length)return[o,9];
-  const op=p[pc];
-  const kn=op<=7||(op>=16&&op<=30)||(op>=32&&op<=34)||(op>=48&&op<=52)||op===64||op===65||(op>=80&&op<=83);
-  if(!kn)return[o,5];
-  const L=op===1?1:op===2?4:op>=48&&op<=51?2:0;
-  if(L&&pc+L>=p.length)return[o,9];
-  n++;
-  let nd=0,pu=0;
-  if(op===3||op===4||op===23||op===27||op===49||op===50||op===64||op===80||op===81||op===83)nd=1;
-  else if(op===5||op===6||op===65||(op>=16&&op<=22)||(op>=24&&op<=30)||(op>=32&&op<=34))nd=2;
-  else if(op===7)nd=3;
-  if(op===1||op===2||op===82||(op>=16&&op<=30)||(op>=32&&op<=34)||op===64)pu=1;
-  else if(op===4||op===5)pu=2;
-  else if(op===6||op===7)pu=3;
-  if(sp<nd)return[o,2];
-  if(sp-nd+pu>256)return[o,3];
-  const npc=pc+1+L;
-  let a,b,r,v,t;
-  if(op===23||op===27){
-   a=s[--sp];s[sp++]=op===23?(-a)|0:~a;pc=npc;continue;
-  }
-  if(op>=16&&op<=22||op>=24&&op<=30||op>=32&&op<=34){
-   b=s[--sp];a=s[--sp];
-   if(op===16)r=(a+b)|0;
-   else if(op===17)r=(a-b)|0;
-   else if(op===18)r=Math.imul(a,b);
-   else if(op===19){if(!b)return[o,4];r=(a/b)|0}
-   else if(op===20){if(!b)return[o,4];r=a%b}
-   else if(op===21){if(!b)return[o,4];r=Math.floor((a>>>0)/(b>>>0))|0}
-   else if(op===22){if(!b)return[o,4];r=((a>>>0)%(b>>>0))|0}
-   else if(op===23)r=(-a)|0;
-   else if(op===24)r=a&b;
-   else if(op===25)r=a|b;
-   else if(op===26)r=a^b;
-   else if(op===27)r=~a;
-   else if(op===28)r=a<<(b&31);
-   else if(op===29)r=a>>(b&31);
-   else if(op===30)r=(a>>>(b&31))|0;
-   else if(op===32)r=a===b?1:0;
-   else if(op===33)r=a<b?1:0;
-   else r=(a>>>0)<(b>>>0)?1:0;
-   s[sp++]=r;pc=npc;continue;
-  }
-  switch(op){
-   case 0:return[o,0];
-   case 1:s[sp++]=(p[pc+1]<<24)>>24;break;
-   case 2:s[sp++]=(p[pc+1]|p[pc+2]<<8|p[pc+3]<<16|p[pc+4]<<24)|0;break;
-   case 3:sp--;break;
-   case 4:s[sp]=s[sp-1];sp++;break;
-   case 5:t=s[sp-1];s[sp-1]=s[sp-2];s[sp-2]=t;break;
-   case 6:s[sp]=s[sp-2];sp++;break;
-   case 7:t=s[sp-3];s[sp-3]=s[sp-2];s[sp-2]=s[sp-1];s[sp-1]=t;break;
-   case 48:{let j=p[pc+1]|p[pc+2]<<8;if(j>=32768)j-=65536;pc=npc+j;continue}
-   case 49:v=s[--sp];{let j=p[pc+1]|p[pc+2]<<8;if(j>=32768)j-=65536;pc=v===0?npc+j:npc;continue}
-   case 50:v=s[--sp];{let j=p[pc+1]|p[pc+2]<<8;if(j>=32768)j-=65536;pc=v!==0?npc+j:npc;continue}
-   case 51:if(cp>=64)return[o,7];c[cp++]=npc;pc=p[pc+1]|p[pc+2]<<8;continue;
-   case 52:if(!cp)return[o,8];pc=c[--cp];continue;
-   case 64:a=s[--sp];if(a<0||a>255)return[o,6];s[sp++]=m[a];break;
-   case 65:a=s[--sp];v=s[--sp];if(a<0||a>255)return[o,6];m[a]=v;break;
-   case 80:v=s[--sp];t=String(v);if(o.length+t.length>65536)return[o,11];for(let i=0;i<t.length;i++)o.push(t.charCodeAt(i));break;
-   case 81:v=s[--sp];if(o.length>=65536)return[o,11];o.push(v&255);break;
-   case 82:s[sp++]=ip<q.length?q[ip++]:-1;break;
-   case 83:v=s[--sp];return[o,v&255];
-  }
-  pc=npc;
- }
+const s=new A(256),c=new A(64),m=new A(256),o=[];
+let sp=0,cp=0,pc=0,n=0,ip=0,op,L,k,nd,pu,npc,a,b,r,v,t,j;
+for(;;){
+if(n>=1e6)return[o,10];
+if(pc<0|pc>=p.length)return[o,9];
+op=p[pc];
+L=op==1?1:op==2?4:op>47&&op<52?2:0;
+if(L&&pc+L>=p.length)return[o,9];
+n++;
+k=T.charCodeAt(op)-48;nd=k>>2;pu=k&3;
+if(sp<nd)return[o,2];
+if(sp-nd+pu>256)return[o,3];
+npc=pc+1+L;
+if(nd==2&&pu==1){b=s[--sp];a=s[--sp];r=F[op-16](a,b);if(r!=r)return[o,4];s[sp++]=r;pc=npc;continue}
+switch(op){
+case 0:return[o,0];
+case 1:s[sp++]=p.readInt8(pc+1);break;
+case 2:s[sp++]=p.readInt32LE(pc+1);break;
+case 3:sp--;break;
+case 4:s[sp]=s[sp-1];sp++;break;
+case 5:t=s[sp-1];s[sp-1]=s[sp-2];s[sp-2]=t;break;
+case 6:s[sp]=s[sp-2];sp++;break;
+case 7:[s[sp-3],s[sp-2],s[sp-1]]=[s[sp-2],s[sp-1],s[sp-3]];break;
+case 23:case 27:a=s[--sp];s[sp++]=op==23?-a|0:~a;break;
+case 48:case 49:case 50:v=op>48?s[--sp]:0;j=p.readInt16LE(pc+1);pc=op==48|(op==49)==(v==0)?npc+j:npc;continue;
+case 51:if(cp>=64)return[o,7];c[cp++]=npc;pc=p[pc+1]|p[pc+2]<<8;continue;
+case 52:if(!cp)return[o,8];pc=c[--cp];continue;
+case 64:a=s[--sp];if(a>>>0>255)return[o,6];s[sp++]=m[a];break;
+case 65:a=s[--sp];v=s[--sp];if(a>>>0>255)return[o,6];m[a]=v;break;
+case 80:v=s[--sp];t=''+v;if(o.length+t.length>65536)return[o,11];o.push(...Buffer.from(t));break;
+case 81:v=s[--sp];if(o.length>65535)return[o,11];o.push(v&255);break;
+case 82:s[sp++]=ip<q.length?q[ip++]:-1;break;
+case 83:v=s[--sp];return[o,v&255];
+default:return[o,5];
 }
-for(const id of readdirSync(I).sort()){
- let p,q;
- try{p=readFileSync(join(I,id,'program.bin'))}catch{p=Buffer.alloc(0)}
- try{q=readFileSync(join(I,id,'input.bin'))}catch{q=Buffer.alloc(0)}
- const[o,code]=run(p,q);
- mkdirSync(join(O,id),{recursive:true});
- writeFileSync(join(O,id,'stdout.bin'),Buffer.from(o));
- writeFileSync(join(O,id,'exit.txt'),String(code)+'\n');
+pc=npc;
 }
+}
+for(const x of D(I).sort()){let p,q;try{p=R(J(I,x,'program.bin'))}catch{p=Buffer.alloc(0)}try{q=R(J(I,x,'input.bin'))}catch{q=Buffer.alloc(0)}const[o,e]=run(p,q);M(J(O,x),{recursive:true});W(J(O,x,'stdout.bin'),Buffer.from(o));W(J(O,x,'exit.txt'),e+'\n')}
